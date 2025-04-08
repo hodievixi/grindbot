@@ -1,11 +1,16 @@
 import telebot
 from telebot import types
-import urllib.parse
 import os
+import json
+from datetime import datetime
 from dotenv import load_dotenv
 import gspread
-from oauth2client.service_account import ServiceAccountCredentials
-from datetime import datetime
+from google.oauth2 import service_account
+
+
+credentials_dict = json.loads(os.getenv("GOOGLE_CREDENTIALS_JSON"))
+credentials = service_account.Credentials.from_service_account_info(credentials_dict)
+
 
 # === Загрузка переменных окружения ===
 load_dotenv()
@@ -19,7 +24,9 @@ bot = telebot.TeleBot(TOKEN)
 
 # === Google Sheets подключение ===
 scope = ["https://spreadsheets.google.com/feeds", 'https://www.googleapis.com/auth/drive']
-creds = ServiceAccountCredentials.from_json_keyfile_name(CREDENTIALS_FILE, scope)
+credentials_dict = json.loads(os.getenv("GOOGLE_CREDENTIALS_JSON"))
+creds = service_account.Credentials.from_service_account_info(credentials_dict, scopes=scope)
+
 client = gspread.authorize(creds)
 sheet = client.open_by_key(SHEET_ID).sheet1
 
