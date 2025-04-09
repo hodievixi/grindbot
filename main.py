@@ -1,27 +1,25 @@
 import telebot
 from telebot import types
-import urllib.parse
 import os
 import json
+from datetime import datetime
 from dotenv import load_dotenv
 import gspread
 from oauth2client.service_account import ServiceAccountCredentials
-from datetime import datetime
 
-# === Загрузка переменных окружения ===
+# === Загрузка .env ===
 load_dotenv()
 
 TOKEN = os.getenv("BOT_TOKEN")
 ADMIN_ID = int(os.getenv("ADMIN_ID"))
 SHEET_ID = os.getenv("GOOGLE_SHEET_ID")
-CREDENTIALS_FILE = os.getenv("GOOGLE_CREDENTIALS")
+CREDENTIALS_JSON = json.loads(os.getenv("GOOGLE_CREDENTIALS_JSON"))
 
 bot = telebot.TeleBot(TOKEN)
 
-# === Настройка Google Sheets ===
+# === Google Sheets ===
 scope = ["https://spreadsheets.google.com/feeds", 'https://www.googleapis.com/auth/drive']
-credentials_dict = json.loads(os.getenv("GOOGLE_CREDENTIALS_JSON"))
-creds = ServiceAccountCredentials.from_json_keyfile_dict(credentials_dict, scope)
+creds = ServiceAccountCredentials.from_json_keyfile_dict(CREDENTIALS_JSON, scope)
 client = gspread.authorize(creds)
 sheet = client.open_by_key(SHEET_ID).sheet1
 
@@ -33,66 +31,58 @@ main_menu.row('📨 Поддержка')
 # === Команда /start ===
 @bot.message_handler(commands=['start'])
 def start(message):
-    bot.send_message(
+    photo = open('Frame 10.jpg', 'rb')
+    bot.send_photo(
         message.chat.id,
-        'Добро пожаловать в Grind University ⚡️\nЗдесь ты найдешь путь к цифровой профессии и заработку.',
+        photo=photo,
+        caption='👋 Добро пожаловать!\n\n🧠 Готов получить доступ к системе?\nВыбирай способ оплаты ниже:',
         reply_markup=main_menu
     )
 
 # === Обработка текстов ===
 @bot.message_handler(content_types=['text'])
 def handle_message(message):
+    username = f"@{message.from_user.username}" if message.from_user.username else "нет юзернейма"
+    name = message.from_user.first_name
+    now = datetime.now().strftime("%d.%m.%Y %H:%M")
+
     if message.text == '📨 Поддержка':
         bot.send_message(
             message.chat.id,
-            '❓ Есть вопросы? Напиши менеджеру: @grind_unversity\n📌 Он поможет с оплатой, доступом и бонусами.'
+            "📨 Напиши нашему менеджеру: @grind_unversity\nОн поможет с оплатой и доступом."
         )
 
     elif message.text == '💳 Оплатить картой (30$)':
         bot.send_message(
             message.chat.id,
-            "💳 Для оплаты картой напиши:\n@grind_unversity\nСообщение: *Хочу оплатить курс картой*",
+            "💳 Для оплаты картой — напиши сообщение:\n\n👉 *Хочу оплатить курс картой*\n\n🔗 @grind_unversity",
             parse_mode='Markdown'
         )
-        sheet.append_row([
-            message.from_user.first_name,
-            f"@{message.from_user.username}" if message.from_user.username else "нет юзернейма",
-            datetime.now().strftime("%d.%m.%Y %H:%M"),
-            "—",
-            "💳 Карта"
-        ])
+        sheet.append_row([name, username, now, "—", "💳 Карта"])
 
     elif message.text == '🪙 Оплатить криптой':
         bot.send_message(
             message.chat.id,
-            "🔗 Отправь 25 USDT (TRC-20) на адрес:\n\n`TUxCoiYX3kzBXP7Uxv3ziuyBZwrpYbcxZP`\n\nПосле оплаты нажми кнопку ниже 👇",
+            "🪙 Отправь 25 USDT (TRC-20) на адрес:\n\n`TFfzrzShKw25V44BWHtewwXH12SLZvyDLg`\n\nПосле оплаты нажми кнопку ниже 👇",
             parse_mode='Markdown',
             reply_markup=types.InlineKeyboardMarkup().add(
                 types.InlineKeyboardButton("✅ Я оплатил", callback_data="paid_crypto")
             )
         )
-
     else:
-        bot.send_message(
-            message.chat.id,
-            'Выбери способ оплаты ниже или обратись в поддержку:',
-            reply_markup=main_menu
-        )
+        bot.send_message(message.chat.id, "Выбери способ оплаты ниже:", reply_markup=main_menu)
 
-# === Обработка кнопки "Я оплатил" ===
+# === Обработка оплаты криптой ===
 @bot.callback_query_handler(func=lambda call: call.data == "paid_crypto")
 def confirm_crypto_payment(call):
     username = f"@{call.from_user.username}" if call.from_user.username else "нет юзернейма"
-    sheet.append_row([
-        call.from_user.first_name,
-        username,
-        datetime.now().strftime("%d.%m.%Y %H:%M"),
-        "—",
-        "🪙 Крипта"
-    ])
-    bot.send_message(call.message.chat.id, "Спасибо за оплату! 🔓 Доступ откроется в ближайшее время.")
+    name = call.from_user.first_name
+    now = datetime.now().strftime("%d.%m.%Y %H:%M")
+
+    sheet.append_row([name, username, now, "—", "🪙 Крипта"])
+    bot.send_message(call.message.chat.id, "✅ Спасибо за оплату! Доступ скоро откроется.")
     bot.send_message(ADMIN_ID, f"💰 Оплата КРИПТОЙ от {username}")
 
 # === Запуск ===
-print('🤖 Бот работает и ждёт клиентов...')
+print("🚀 Бот запущен и ждёт жертв...")
 bot.infinity_polling()
