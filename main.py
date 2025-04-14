@@ -5,7 +5,7 @@ from dotenv import load_dotenv
 
 # === Загрузка .env ===
 load_dotenv()
-TOKEN = os.getenv("7748501866:AAHqQx1nxgJ2Lc2j_iKJhbFAFTY7c4AtFjk")
+TOKEN = os.getenv("BOT_TOKEN")
 bot = telebot.TeleBot(TOKEN)
 
 # === Главное меню ===
